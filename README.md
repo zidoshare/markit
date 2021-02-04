@@ -31,3 +31,18 @@ Flags:
 
 Use "markit [command] --help" for more information about a command.
 ```
+
+# 安装
+
+## Go
+
+```
+go get -u github.com/zidoshare/markit
+```
+
+# 🙏 鸣谢
+
+站在巨人们的肩膀上:
+
+* [中文文案排版指北](https://github.com/sparanoid/chinese-copywriting-guidelines)：统一中文文案、排版的相关用法，降低团队成员之间的沟通成本，增强网站气质
+* [lute](https://github.com/8825/lute)：一款对中文语境优化的 Markdown 引擎，支持 Go 和 JavaScript。

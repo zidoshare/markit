@@ -21,8 +21,11 @@ THE SOFTWARE.
 */
 package utils
 
-import "os"
-import "path/filepath"
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+)
 
 //ResolveConfigPath 获取当前可用配置文件路径
 func ResolveConfigPath(currentPath string) (p string) {
@@ -36,6 +39,21 @@ func ResolveConfigPath(currentPath string) (p string) {
 		}
 		currentPath = filepath.Dir(currentPath)
 	}
+}
+
+func IsDir(p string) bool {
+	stat, err := os.Stat(p)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false
+		}
+		err = fmt.Errorf("文件状态获取错误:%s\n", err)
+		if err != nil {
+			fmt.Println(err)
+		}
+		return false
+	}
+	return stat.IsDir()
 }
 
 func FileExists(path string) bool {

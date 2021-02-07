@@ -44,12 +44,10 @@ func loadConfig(path string) {
 	if cfgFile != "" {
 		viper.SetConfigFile(cfgFile)
 	} else {
-		var path string
-		if utils.IsDir(path) {
-			path = utils.ResolveConfigPath(path)
-		} else {
-			path = utils.ResolveConfigPath(filepath.Dir(path))
+		if !utils.IsDir(path) {
+			path = filepath.Dir(path)
 		}
+		path = utils.ResolveConfigPath(path)
 		if path == "" {
 			var err error
 			path, err = homedir.Dir()

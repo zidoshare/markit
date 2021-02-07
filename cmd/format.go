@@ -23,15 +23,18 @@ package cmd
 
 import (
 	"fmt"
+	"io"
 	"io/ioutil"
 	"markit/engine"
+	"markit/utils"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
 
-// formatCmd represents the format command
+// formatCmd format 命令
 var formatCmd = &cobra.Command{
 	Use:   "format",
 	Short: "格式化markdown文档",
@@ -48,32 +51,72 @@ var formatCmd = &cobra.Command{
 	Args: cobra.MaximumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) != 0 {
-			loadConfig(args[0])
-			content, err := ioutil.ReadFile(args[0])
+			p, err := filepath.Abs(args[0])
 			if err != nil {
-				err = fmt.Errorf("读取文件内容出错:%s\n", err)
-				if err != nil {
-					fmt.Println(err)
-				}
+				fmt.Println(err)
 				os.Exit(1)
 			}
-			content = engine.NewFormatter(engine.NewOptions()).Format(content)
-			ioutil.WriteFile(args[0], content, os.ModePerm)
+			if utils.IsDir(p) {
+				loadConfig(p)
+				formatDir(p)
+			} else {
+				loadConfig(p)
+				formatFile(p)
+			}
 		} else {
 			p := filepath.Dir(os.Args[0])
 			loadConfig(p)
-			content, err := ioutil.ReadAll(os.Stdin)
-			if err != nil {
-				err = fmt.Errorf("读取文件内容出错:%s", err)
-				if err != nil {
-					fmt.Println(err)
-				}
-				os.Exit(1)
-			}
-			content = engine.NewFormatter(engine.NewOptions()).Format(content)
-			os.Stdout.Write(content)
+			format(os.Stdin, os.Stdout)
 		}
 	},
+}
+
+func format(r io.Reader, w io.Writer) {
+	content, err := ioutil.ReadAll(r)
+	if err != nil {
+		err = fmt.Errorf("读取文件内容出错:%s", err)
+		if err != nil {
+			fmt.Println(err)
+		}
+		os.Exit(1)
+	}
+	content = engine.NewFormatter(engine.NewOptions()).Format(content)
+	w.Write(content)
+}
+func formatFile(path string) {
+	content, err := ioutil.ReadFile(path)
+	if err != nil {
+		err = fmt.Errorf("读取文件内容出错:%s\n", err)
+		if err != nil {
+			fmt.Println(err)
+		}
+		os.Exit(1)
+	}
+	content = engine.NewFormatter(engine.NewOptions()).Format(content)
+	ioutil.WriteFile(path, content, os.ModePerm)
+
+}
+func formatDir(dir string) {
+	filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			//以.开头的文件夹均忽略
+			if strings.HasPrefix(info.Name(), ".") {
+				return filepath.SkipDir
+			}
+			if info.Name() == "node_modules" {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if filepath.Ext(path) != ".md" {
+			return nil
+		}
+		formatFile(path)
+		return nil
+	})
 }
 
 func init() {

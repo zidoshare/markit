@@ -35,6 +35,7 @@ import (
 var cfgFile string
 
 func processCmd(cmd *cobra.Command) {
+	rootCmd.AddCommand(cmd)
 	cmd.PersistentFlags().StringVar(&cfgFile, "config", "", "默认配置文件(将从指定路径及上层路径递归查找.markit.toml,如果未能找到将尝试查询$HOME/.markit.toml)")
 }
 
@@ -60,6 +61,9 @@ func loadConfig(path string) {
 	}
 
 	if err := viper.ReadInConfig(); err != nil {
+		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+			return
+		}
 		fmt.Println(err)
 		os.Exit(1)
 	}

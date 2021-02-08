@@ -45,3 +45,22 @@ func NewFormatter(options Options) *LuteFormatter {
 func (formatter *LuteFormatter) Format(bytes []byte) []byte {
 	return formatter.engine.Format("Markit", bytes)
 }
+
+type Renderer interface {
+	Render(bytes []byte) []byte
+}
+
+type LuteRenderer struct {
+	engine *lute.Lute
+}
+
+func NewRender(options Options) *LuteRenderer {
+	return &LuteRenderer{
+		engine: lute.New(func(engine *lute.Lute) {
+		}),
+	}
+}
+
+func (renderer *LuteRenderer) Render(bytes []byte) []byte {
+	return renderer.engine.Markdown("Markit", bytes)
+}

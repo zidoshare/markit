@@ -56,15 +56,18 @@ var formatCmd = &cobra.Command{
 				fmt.Println(err)
 				os.Exit(1)
 			}
+			loadConfig(p)
 			if utils.IsDir(p) {
-				loadConfig(p)
 				formatDir(p)
 			} else {
-				loadConfig(p)
 				formatFile(p)
 			}
 		} else {
-			p := filepath.Dir(os.Args[0])
+			p, err := filepath.Abs(os.Args[0])
+			if err != nil {
+				fmt.Println(err)
+				os.Exit(1)
+			}
 			loadConfig(p)
 			format(os.Stdin, os.Stdout)
 		}
@@ -94,7 +97,6 @@ func formatFile(path string) {
 	}
 	content = engine.NewFormatter(engine.NewOptions()).Format(content)
 	ioutil.WriteFile(path, content, os.ModePerm)
-
 }
 func formatDir(dir string) {
 	filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
@@ -120,6 +122,5 @@ func formatDir(dir string) {
 }
 
 func init() {
-	rootCmd.AddCommand(formatCmd)
 	processCmd(formatCmd)
 }

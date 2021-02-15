@@ -23,11 +23,13 @@ package cmd
 
 import (
 	"fmt"
+	"io"
 	"io/ioutil"
 	"markit/engine"
 	"markit/utils"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -58,26 +60,74 @@ var renderCmd = &cobra.Command{
 			}
 			loadConfig(p)
 			if utils.IsDir(p) {
-				//TODO 渲染文件夹
+				renderDir(p)
 			} else {
-				renderFile(p)
+				targetPath, err = filepath.Abs(targetPath)
+				if err != nil {
+					fmt.Println(err)
+					os.Exit(1)
+				}
+				renderFile(p, targetPath)
 			}
 		} else {
-			//TODO 标准输入输出流
+			p, err := filepath.Abs(os.Args[0])
+			if err != nil {
+				fmt.Println(err)
+				os.Exit(1)
+			}
+			loadConfig(p)
+			render(os.Stdin, os.Stdout)
 		}
 	},
 }
 
-func renderFile(p string) {
+func render(r io.Reader, w io.Writer) {
+	content, err := ioutil.ReadAll(r)
+	if err != nil {
+		err = fmt.Errorf("读取文件内容出错:%s", err)
+		if err != nil {
+			fmt.Println(err)
+		}
+		os.Exit(1)
+	}
+	content = engine.NewRender(engine.NewOptions()).Render(content)
+	w.Write(content)
+}
+
+func renderFile(p string, targetPath string) {
+	resultPath := targetPath
+	if utils.IsDir(resultPath) {
+		filename := strings.Split(p, string(filepath.Separator))
+		resultPath = filepath.Join(resultPath, filename[len(filename)-1])
+		resultPath = strings.TrimSuffix(resultPath, filepath.Ext(p)) + ".html"
+	}
 	content, err := ioutil.ReadFile(p)
 	if err != nil {
 		fmt.Printf("读取文件内容出错:%s\n", err)
 		os.Exit(1)
 	}
 	content = engine.NewRender(engine.NewOptions()).Render(content)
-	ioutil.WriteFile(targetPath, content, os.ModePerm)
+	ioutil.WriteFile(resultPath, content, os.ModePerm)
+}
+
+func renderDir(p string) {
+	targetCreated := utils.DirExists(targetPath)
+	WalkMdFile(p, func(path string) {
+		//延迟到遍历到文件才创建输出目录
+		if !targetCreated {
+			os.MkdirAll(targetPath, os.ModePerm)
+		}
+		relativePath, err := filepath.Rel(p, filepath.Dir(path))
+		if err != nil {
+			fmt.Printf("渲染文件出错：%s", err)
+			os.Exit(1)
+		}
+		resultPath := filepath.Join(targetPath, relativePath)
+		renderFile(path, resultPath)
+	})
 }
 
 func init() {
 	processCmd(renderCmd)
+	renderCmd.Flags().StringVarP(&targetPath, "out", "o", "", "当输入为文件时，目标路径必须为文件路径。当输入为文件夹时，目标路径必须为文件夹路径")
 }

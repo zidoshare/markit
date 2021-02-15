@@ -25,9 +25,11 @@ Usage:
 Available Commands:
   format      格式化markdown文档
   help        Help about any command
+  render      渲染markdown文档
 
 Flags:
-  -h, --help   help for markit
+  -c, --config string   默认配置文件(将从指定路径及上层路径递归查找.markit.toml,如果未能找到将尝试查询$HOME/.markit.toml)
+  -h, --help            help for markit
 
 Use "markit [command] --help" for more information about a command.
 ```

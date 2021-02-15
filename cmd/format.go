@@ -29,7 +29,6 @@ import (
 	"markit/utils"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -99,26 +98,7 @@ func formatFile(path string) {
 	ioutil.WriteFile(path, content, os.ModePerm)
 }
 func formatDir(dir string) {
-	filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		if info.IsDir() {
-			//以.开头的文件夹均忽略
-			if strings.HasPrefix(info.Name(), ".") {
-				return filepath.SkipDir
-			}
-			if info.Name() == "node_modules" {
-				return filepath.SkipDir
-			}
-			return nil
-		}
-		if filepath.Ext(path) != ".md" {
-			return nil
-		}
-		formatFile(path)
-		return nil
-	})
+	WalkMdFile(dir, formatFile)
 }
 
 func init() {

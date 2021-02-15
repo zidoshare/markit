@@ -41,6 +41,7 @@ func ResolveConfigPath(currentPath string) (p string) {
 	}
 }
 
+//IsDir 判断目录是否是一个文件夹
 func IsDir(p string) bool {
 	stat, err := os.Stat(p)
 	if err != nil {
@@ -56,6 +57,7 @@ func IsDir(p string) bool {
 	return stat.IsDir()
 }
 
+//FileExists 判断文件是否存在（若path是一个文件夹，也会返回false，应当使用DirExists方法）
 func FileExists(path string) bool {
 	stat, err := os.Stat(path)
 	if err == nil {
@@ -68,4 +70,31 @@ func FileExists(path string) bool {
 		return false
 	}
 	return false
+}
+
+//DirExists 判断文件夹是否存在（若path是一个文件，也会返回false，应当使用FileExists方法）
+func DirExists(path string) bool {
+	stat, err := os.Stat(path)
+	if err == nil {
+		if stat.IsDir() {
+			return true
+		}
+		return false
+	}
+	if os.IsNotExist(err) {
+		return false
+	}
+	return false
+}
+
+//Exists 判断所给路径文件/文件夹是否存在(返回true是存在)
+func Exists(path string) bool {
+	_, err := os.Stat(path) //os.Stat获取文件信息
+	if err != nil {
+		if os.IsExist(err) {
+			return true
+		}
+		return false
+	}
+	return true
 }

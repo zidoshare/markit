@@ -23,8 +23,9 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/spf13/cobra"
 	"os"
+
+	"github.com/spf13/cobra"
 )
 
 var rootCmd = &cobra.Command{
@@ -50,6 +51,7 @@ var rootCmd = &cobra.Command{
 `,
 }
 
+//Execute 执行命令行解析
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)

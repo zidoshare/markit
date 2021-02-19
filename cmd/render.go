@@ -22,10 +22,12 @@ THE SOFTWARE.
 package cmd
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"markit/engine"
+	"markit/styles"
 	"markit/utils"
 	"os"
 	"path/filepath"
@@ -34,7 +36,18 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var targetPath string
+var (
+	targetPath string
+	//是否生成完整html
+	body bool
+	//是否添加css样式
+	styled bool
+	//是否附加独立的lib，这会将css样式放在css/文件夹下，js代码放置到js/文件夹下
+	stand bool
+
+	//css位置
+	cssDir = "css"
+)
 
 // renderCmd format 命令
 var renderCmd = &cobra.Command{
@@ -96,10 +109,12 @@ func render(r io.Reader, w io.Writer) {
 
 func renderFile(p string, targetPath string) {
 	resultPath := targetPath
+	var filename string
 	if utils.IsDir(resultPath) {
-		filename := strings.Split(p, string(filepath.Separator))
-		resultPath = filepath.Join(resultPath, filename[len(filename)-1])
-		resultPath = strings.TrimSuffix(resultPath, filepath.Ext(p)) + ".html"
+		arr := strings.Split(p, string(filepath.Separator))
+		filename = arr[len(arr)-1]
+		filename = strings.TrimSuffix(filename, filepath.Ext(filename))
+		resultPath = filepath.Join(resultPath, filename) + ".html"
 	}
 	content, err := ioutil.ReadFile(p)
 	if err != nil {
@@ -107,22 +122,54 @@ func renderFile(p string, targetPath string) {
 		os.Exit(1)
 	}
 	content = engine.NewRender(engine.NewOptions()).Render(content)
-	ioutil.WriteFile(resultPath, content, os.ModePerm)
+	if !body {
+		ioutil.WriteFile(resultPath, content, os.ModePerm)
+		return
+	}
+	var buffer bytes.Buffer
+	buffer.WriteString("<html>\n<head>\n<title>")
+	buffer.WriteString(filename)
+	buffer.WriteString("</title>\n")
+	if styled {
+		buffer.WriteString(styles.GetExtraHead("github"))
+		//非独立样式会将样式放在head中
+		if !stand {
+			buffer.WriteString("<style type=\"text/css\">\n")
+			buffer.WriteString(styles.Get("github"))
+			buffer.WriteString("</style>")
+		} else {
+			cssPath := filepath.Join(cssDir, "github.css")
+			buffer.WriteString("<link rel=\"stylesheet\" href=\"" + cssPath + "\"/>")
+			if !utils.FileExists(cssPath) {
+				if !utils.DirExists(cssDir) {
+					os.MkdirAll(cssDir, os.ModePerm)
+				}
+				ioutil.WriteFile(cssPath, utils.StrToBytes(styles.Get("github")), os.ModePerm)
+			}
+		}
+	}
+	buffer.WriteString("</head>\n")
+	if styled {
+		buffer.WriteString("<body class=\"markdown-body\">")
+	} else {
+		buffer.WriteString("<body>")
+	}
+	buffer.Write(content)
+	buffer.WriteString("</body>\n</html>")
+	ioutil.WriteFile(resultPath, buffer.Bytes(), os.ModePerm)
 }
 
 func renderDir(p string) {
-	targetCreated := utils.DirExists(targetPath)
 	WalkMdFile(p, func(path string) {
-		//延迟到遍历到文件才创建输出目录
-		if !targetCreated {
-			os.MkdirAll(targetPath, os.ModePerm)
-		}
 		relativePath, err := filepath.Rel(p, filepath.Dir(path))
 		if err != nil {
 			fmt.Printf("渲染文件出错：%s", err)
 			os.Exit(1)
 		}
 		resultPath := filepath.Join(targetPath, relativePath)
+		if !utils.DirExists(resultPath) {
+			os.MkdirAll(resultPath, os.ModePerm)
+		}
 		renderFile(path, resultPath)
 	})
 }
@@ -130,4 +177,7 @@ func renderDir(p string) {
 func init() {
 	processCmd(renderCmd)
 	renderCmd.Flags().StringVarP(&targetPath, "out", "o", "", "当输入为文件时，目标路径必须为文件路径。当输入为文件夹时，目标路径必须为文件夹路径")
+	renderCmd.Flags().BoolVarP(&styled, "style", "s", false, "是否添加css样式")
+	renderCmd.Flags().BoolVarP(&stand, "stand", "S", false, "是否使用独立样式")
+	renderCmd.Flags().BoolVarP(&body, "body", "b", false, "生成完整的html，这会为渲染结果添加<html><title><body>等标签")
 }

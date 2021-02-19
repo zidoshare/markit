@@ -37,7 +37,7 @@ import (
 )
 
 var (
-	targetPath string
+	out string
 	//是否生成完整html
 	body bool
 	//是否添加css样式
@@ -65,30 +65,35 @@ var renderCmd = &cobra.Command{
 	`,
 	Args: cobra.MaximumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
+		in := ""
 		if len(args) != 0 {
-			p, err := filepath.Abs(args[0])
-			if err != nil {
-				fmt.Println(err)
-				os.Exit(1)
+			in = args[0]
+		} else {
+			in = os.Args[0]
+		}
+		in, err := filepath.Abs(in)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+		loadConfig(in)
+		out, err = filepath.Abs(out)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+		if stand {
+			if utils.IsDir(in) {
+				cssDir = filepath.Join(out, cssDir)
 			}
-			loadConfig(p)
-			if utils.IsDir(p) {
-				renderDir(p)
+		}
+		if len(args) != 0 {
+			if utils.IsDir(in) {
+				renderDir(in)
 			} else {
-				targetPath, err = filepath.Abs(targetPath)
-				if err != nil {
-					fmt.Println(err)
-					os.Exit(1)
-				}
-				renderFile(p, targetPath)
+				renderFile(in, out)
 			}
 		} else {
-			p, err := filepath.Abs(os.Args[0])
-			if err != nil {
-				fmt.Println(err)
-				os.Exit(1)
-			}
-			loadConfig(p)
 			render(os.Stdin, os.Stdout)
 		}
 	},
@@ -107,27 +112,25 @@ func render(r io.Reader, w io.Writer) {
 	w.Write(content)
 }
 
-func renderFile(p string, targetPath string) {
-	resultPath := targetPath
-	var filename string
-	if utils.IsDir(resultPath) {
-		arr := strings.Split(p, string(filepath.Separator))
-		filename = arr[len(arr)-1]
-		filename = strings.TrimSuffix(filename, filepath.Ext(filename))
-		resultPath = filepath.Join(resultPath, filename) + ".html"
-	}
-	content, err := ioutil.ReadFile(p)
+//渲染文件
+func renderFile(mdPath string, outPath string) {
+	content, err := ioutil.ReadFile(mdPath)
 	if err != nil {
 		fmt.Printf("读取文件内容出错:%s\n", err)
 		os.Exit(1)
 	}
 	content = engine.NewRender(engine.NewOptions()).Render(content)
 	if !body {
-		ioutil.WriteFile(resultPath, content, os.ModePerm)
+		ioutil.WriteFile(outPath, content, os.ModePerm)
 		return
 	}
 	var buffer bytes.Buffer
 	buffer.WriteString("<html>\n<head>\n<title>")
+
+	arr := strings.Split(mdPath, string(filepath.Separator))
+	filename := arr[len(arr)-1]
+	filename = strings.TrimSuffix(filename, filepath.Ext(filename))
+
 	buffer.WriteString(filename)
 	buffer.WriteString("</title>\n")
 	if styled {
@@ -138,14 +141,21 @@ func renderFile(p string, targetPath string) {
 			buffer.WriteString(styles.Get("github"))
 			buffer.WriteString("</style>")
 		} else {
-			cssPath := filepath.Join(cssDir, "github.css")
-			buffer.WriteString("<link rel=\"stylesheet\" href=\"" + cssPath + "\"/>")
+			//创建css文件
+			var cssPath = filepath.Join(cssDir, "github.css")
 			if !utils.FileExists(cssPath) {
-				if !utils.DirExists(cssDir) {
-					os.MkdirAll(cssDir, os.ModePerm)
+				if !utils.DirExists(filepath.Dir(cssPath)) {
+					os.MkdirAll(filepath.Dir(cssPath), os.ModePerm)
 				}
 				ioutil.WriteFile(cssPath, utils.StrToBytes(styles.Get("github")), os.ModePerm)
 			}
+			//计算相对路径
+			relCssPath, err := filepath.Rel(cssPath, outPath)
+			if err != nil {
+				fmt.Println(err)
+				os.Exit(1)
+			}
+			buffer.WriteString("<link rel=\"stylesheet\" href=\"" + relCssPath + "\"/>")
 		}
 	}
 	buffer.WriteString("</head>\n")
@@ -156,7 +166,7 @@ func renderFile(p string, targetPath string) {
 	}
 	buffer.Write(content)
 	buffer.WriteString("</body>\n</html>")
-	ioutil.WriteFile(resultPath, buffer.Bytes(), os.ModePerm)
+	ioutil.WriteFile(outPath, buffer.Bytes(), os.ModePerm)
 }
 
 func renderDir(p string) {
@@ -166,9 +176,15 @@ func renderDir(p string) {
 			fmt.Printf("渲染文件出错：%s", err)
 			os.Exit(1)
 		}
-		resultPath := filepath.Join(targetPath, relativePath)
+		resultPath := filepath.Join(out, relativePath)
 		if !utils.DirExists(resultPath) {
 			os.MkdirAll(resultPath, os.ModePerm)
+		}
+		if utils.IsDir(resultPath) {
+			arr := strings.Split(path, string(filepath.Separator))
+			filename := arr[len(arr)-1]
+			filename = strings.TrimSuffix(filename, filepath.Ext(filename))
+			resultPath = filepath.Join(resultPath, filename) + ".html"
 		}
 		renderFile(path, resultPath)
 	})
@@ -176,7 +192,7 @@ func renderDir(p string) {
 
 func init() {
 	processCmd(renderCmd)
-	renderCmd.Flags().StringVarP(&targetPath, "out", "o", "", "当输入为文件时，目标路径必须为文件路径。当输入为文件夹时，目标路径必须为文件夹路径")
+	renderCmd.Flags().StringVarP(&out, "out", "o", "", "当输入为文件时，目标路径必须为文件路径。当输入为文件夹时，目标路径必须为文件夹路径")
 	renderCmd.Flags().BoolVarP(&styled, "style", "s", false, "是否添加css样式")
 	renderCmd.Flags().BoolVarP(&stand, "stand", "S", false, "是否使用独立样式")
 	renderCmd.Flags().BoolVarP(&body, "body", "b", false, "生成完整的html，这会为渲染结果添加<html><title><body>等标签")

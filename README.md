@@ -1,11 +1,15 @@
 # Markit
 
-专为中文语境优化的 Markdown 命令行工具，包含：
+> 专为中文语境优化的 Markdown 命令行工具
 
-* 解析
-* 渲染
-* 导出
+# 关于
+
+该项目为从命令行使用markdown提供了一个简单的配套解决方案。 
+
+包含：
+
 * 格式化
+* 渲染
 
 针对中文语境，它参考 中文文案排版指北 [https://github.com/sparanoid/chinese-copywriting-guidelines](https://github.com/sparanoid/chinese-copywriting-guidelines)
 
@@ -13,6 +17,7 @@
 
 * 中英文之间增加空格(排除 "ing"， 例如工作中，可能写为 "工作ing"，这种情况不会自动加空格)
 * 专有名词使用正确的大小写(例如 自动将 `github` 转换为 `Github`)
+* 自动处理表格对齐（务必使用等宽字符）
 
 可以提供整个项目文档的统一处理，特别是在处理 Gitbook 等项目时，能够在多人合作中实现格式统一。
 

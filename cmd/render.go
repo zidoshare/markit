@@ -83,13 +83,15 @@ var renderCmd = &cobra.Command{
 			os.Exit(1)
 		}
 		if stand {
-			if utils.IsDir(in) {
+			if utils.IsDir(in) || utils.IsDir(out) {
 				cssDir = filepath.Join(out, cssDir)
+			} else {
+				cssDir = filepath.Join(filepath.Dir(out), cssDir)
 			}
 		}
 		if len(args) != 0 {
 			if utils.IsDir(in) {
-				renderDir(in)
+				renderDir(in, out)
 			} else {
 				renderFile(in, out)
 			}
@@ -113,7 +115,13 @@ func render(r io.Reader, w io.Writer) {
 }
 
 //渲染文件
-func renderFile(mdPath string, outPath string) {
+func renderFile(mdPath, outPath string) {
+	arr := strings.Split(mdPath, string(filepath.Separator))
+	filename := arr[len(arr)-1]
+	filename = strings.TrimSuffix(filename, filepath.Ext(filename))
+	if utils.IsDir(outPath) {
+		outPath = filepath.Join(outPath, filename+".html")
+	}
 	content, err := ioutil.ReadFile(mdPath)
 	if err != nil {
 		fmt.Printf("读取文件内容出错:%s\n", err)
@@ -127,18 +135,15 @@ func renderFile(mdPath string, outPath string) {
 	var buffer bytes.Buffer
 	buffer.WriteString("<html>\n<head>\n<title>")
 
-	arr := strings.Split(mdPath, string(filepath.Separator))
-	filename := arr[len(arr)-1]
-	filename = strings.TrimSuffix(filename, filepath.Ext(filename))
-
 	buffer.WriteString(filename)
 	buffer.WriteString("</title>\n")
 	if styled {
-		buffer.WriteString(styles.GetExtraHead("github"))
+		style, head := styles.Get("github")
+		buffer.WriteString(head)
 		//非独立样式会将样式放在head中
 		if !stand {
 			buffer.WriteString("<style type=\"text/css\">\n")
-			buffer.WriteString(styles.Get("github"))
+			buffer.WriteString(style)
 			buffer.WriteString("</style>")
 		} else {
 			//创建css文件
@@ -147,10 +152,10 @@ func renderFile(mdPath string, outPath string) {
 				if !utils.DirExists(filepath.Dir(cssPath)) {
 					os.MkdirAll(filepath.Dir(cssPath), os.ModePerm)
 				}
-				ioutil.WriteFile(cssPath, utils.StrToBytes(styles.Get("github")), os.ModePerm)
+				ioutil.WriteFile(cssPath, utils.StrToBytes(style), os.ModePerm)
 			}
 			//计算相对路径
-			relCssPath, err := filepath.Rel(cssPath, outPath)
+			relCssPath, err := filepath.Rel(filepath.Dir(outPath), cssPath)
 			if err != nil {
 				fmt.Println(err)
 				os.Exit(1)
@@ -169,24 +174,22 @@ func renderFile(mdPath string, outPath string) {
 	ioutil.WriteFile(outPath, buffer.Bytes(), os.ModePerm)
 }
 
-func renderDir(p string) {
-	WalkMdFile(p, func(path string) {
-		relativePath, err := filepath.Rel(p, filepath.Dir(path))
+func renderDir(dirIn, dirOut string) {
+	WalkMdFile(dirIn, func(mdPath string) {
+		relativePath, err := filepath.Rel(dirIn, filepath.Dir(mdPath))
 		if err != nil {
 			fmt.Printf("渲染文件出错：%s", err)
 			os.Exit(1)
 		}
-		resultPath := filepath.Join(out, relativePath)
+		resultPath := filepath.Join(dirOut, relativePath)
 		if !utils.DirExists(resultPath) {
 			os.MkdirAll(resultPath, os.ModePerm)
 		}
-		if utils.IsDir(resultPath) {
-			arr := strings.Split(path, string(filepath.Separator))
-			filename := arr[len(arr)-1]
-			filename = strings.TrimSuffix(filename, filepath.Ext(filename))
-			resultPath = filepath.Join(resultPath, filename) + ".html"
-		}
-		renderFile(path, resultPath)
+		arr := strings.Split(mdPath, string(filepath.Separator))
+		filename := arr[len(arr)-1]
+		filename = strings.TrimSuffix(filename, filepath.Ext(filename))
+		resultPath = filepath.Join(resultPath, filename) + ".html"
+		renderFile(mdPath, resultPath)
 	})
 }
 

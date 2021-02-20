@@ -21,10 +21,6 @@ THE SOFTWARE.
 */
 package styles
 
-func Get(name string) string {
-	return github
-}
-
-func GetExtraHead(name string) string {
-	return githubExtraHead
+func Get(name string) (string, string) {
+	return github, githubExtraHead
 }

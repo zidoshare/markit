@@ -22,7 +22,6 @@ THE SOFTWARE.
 package cmd
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -146,19 +145,15 @@ func renderFile(mdPath, outPath string) {
 		ioutil.WriteFile(outPath, content, os.ModePerm)
 		return
 	}
-	var buffer bytes.Buffer
-	buffer.WriteString("<html>\n<head>\n<title>")
-
-	buffer.WriteString(filename)
-	buffer.WriteString("</title>\n")
+	html := utils.NewElement("html")
+	head := utils.NewElement("head").In(html)
+	utils.NewElement("title").Text(utils.StrToBytes(filename)).In(head)
 	if styled {
-		style, head := styles.Get("github")
-		buffer.WriteString(head)
+		style, styleHead := styles.Get("github")
+		head.Text(utils.StrToBytes(styleHead))
 		//非独立样式会将样式放在head中
 		if !stand {
-			buffer.WriteString("<style type=\"text/css\">\n")
-			buffer.WriteString(style)
-			buffer.WriteString("</style>")
+			utils.NewElement("style").Attr("type", "text/css").Text(utils.StrToBytes(style)).In(head)
 		} else {
 			//创建css文件
 			var cssPath = filepath.Join(cssDir, "github.css")
@@ -169,23 +164,22 @@ func renderFile(mdPath, outPath string) {
 				ioutil.WriteFile(cssPath, utils.StrToBytes(style), os.ModePerm)
 			}
 			//计算相对路径
-			relCssPath, err := filepath.Rel(filepath.Dir(outPath), cssPath)
+			relCSSPath, err := filepath.Rel(filepath.Dir(outPath), cssPath)
 			if err != nil {
 				fmt.Println(err)
 				os.Exit(1)
 			}
-			buffer.WriteString("<link rel=\"stylesheet\" href=\"" + relCssPath + "\"/>")
+			utils.NewElement("link").Attr("rel", "stylesheet").Attr("href", relCSSPath).In(head)
 		}
 	}
-	buffer.WriteString("</head>\n")
+	var body *utils.Element
 	if styled {
-		buffer.WriteString("<body class=\"markdown-body\">")
+		body = utils.NewElement("body").Attr("class", "markdown-body").Append(head)
 	} else {
-		buffer.WriteString("<body>")
+		body = utils.NewElement("body").Append(head)
 	}
-	buffer.Write(content)
-	buffer.WriteString("</body>\n</html>")
-	ioutil.WriteFile(outPath, buffer.Bytes(), os.ModePerm)
+	body.Text(content)
+	ioutil.WriteFile(outPath, utils.WriteElement(html), os.ModePerm)
 }
 
 func renderDir(dirIn, dirOut string) {

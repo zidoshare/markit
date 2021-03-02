@@ -44,9 +44,13 @@ var (
 	styled bool
 	//是否附加独立的lib，这会将css样式放在css/文件夹下，js代码放置到js/文件夹下
 	stand bool
+	//是否使用单页
+	single bool
+	//是否生成关系图
+	graph bool
 
 	//css位置
-	cssDir = "css"
+	cssDir string
 )
 
 // renderCmd format 命令
@@ -87,6 +91,16 @@ var renderCmd = &cobra.Command{
 				cssDir = filepath.Join(out, cssDir)
 			} else {
 				cssDir = filepath.Join(filepath.Dir(out), cssDir)
+			}
+			cssDir, err := filepath.Abs(filepath.Clean(cssDir))
+			if err != nil {
+				fmt.Println(err)
+				os.Exit(1)
+			}
+			//cssDir必须在out内
+			if !strings.HasPrefix(cssDir, out) {
+				fmt.Println("css目录必须在输出目录内部")
+				os.Exit(1)
 			}
 		}
 		if len(args) != 0 {
@@ -197,6 +211,9 @@ func init() {
 	processCmd(renderCmd)
 	renderCmd.Flags().StringVarP(&out, "out", "o", "", "当输入为文件时，目标路径必须为文件路径。当输入为文件夹时，目标路径必须为文件夹路径")
 	renderCmd.Flags().BoolVarP(&styled, "style", "s", false, "是否添加css样式")
-	renderCmd.Flags().BoolVarP(&stand, "stand", "S", false, "是否使用独立样式")
-	renderCmd.Flags().BoolVarP(&body, "body", "b", false, "生成完整的html，这会为渲染结果添加<html><title><body>等标签")
+	renderCmd.Flags().BoolVarP(&stand, "stand", "S", false, "是否使用独立样式，css和js文件将单独进行打包")
+	renderCmd.Flags().BoolVarP(&body, "body", "b", false, "生成完整的html，为渲染结果添加<html><title><body>等标签")
+	renderCmd.Flags().BoolVarP(&single, "single", "", false, "是否生成渲染为单页，使用局部加载，页面不发生跳转")
+	renderCmd.Flags().BoolVarP(&graph, "graph", "g", false, "是否绘制关系图")
+	renderCmd.Flags().StringVarP(&cssDir, "css-dir", "", "css", "指定css路径")
 }

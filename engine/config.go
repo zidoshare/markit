@@ -24,23 +24,27 @@ package engine
 import "github.com/spf13/viper"
 
 const (
-	AUTO_SPACE_NAME = "autoSpace"
-	FIX_TERM_TYPE   = "fixTermType"
+	//AutoSpaceName 自动添加空格
+	AutoSpaceName = "autoSpace"
+	//FixTermType 纠正错误词汇
+	FixTermType = "fixTermType"
 )
 
+//Options 配置
 type Options struct {
 	AutoSpace   bool
 	FixTermTypo bool
 }
 
+//NewOptions 新建配置
 func NewOptions() Options {
 	return Options{
-		AutoSpace:   viper.GetBool(AUTO_SPACE_NAME),
-		FixTermTypo: viper.GetBool(FIX_TERM_TYPE),
+		AutoSpace:   viper.GetBool(AutoSpaceName),
+		FixTermTypo: viper.GetBool(FixTermType),
 	}
 }
 
 func init() {
-	viper.SetDefault(AUTO_SPACE_NAME, true)
-	viper.SetDefault(FIX_TERM_TYPE, true)
+	viper.SetDefault(AutoSpaceName, true)
+	viper.SetDefault(FixTermType, true)
 }

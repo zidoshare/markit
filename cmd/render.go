@@ -28,6 +28,7 @@ import (
 	"markit/engine"
 	"markit/styles"
 	"markit/utils"
+	"markit/utils/html"
 	"os"
 	"path/filepath"
 	"strings"
@@ -145,15 +146,15 @@ func renderFile(mdPath, outPath string) {
 		ioutil.WriteFile(outPath, content, os.ModePerm)
 		return
 	}
-	html := utils.NewElement("html")
-	head := utils.NewElement("head").In(html)
-	utils.NewElement("title").Text(utils.StrToBytes(filename)).In(head)
+	document := html.NewElement("html")
+	head := html.NewElement("head").In(document)
+	html.NewElement("title").Text(utils.StrToBytes(filename)).In(head)
 	if styled {
 		style, styleHead := styles.Get("github")
 		head.Text(utils.StrToBytes(styleHead))
 		//非独立样式会将样式放在head中
 		if !stand {
-			utils.NewElement("style").Attr("type", "text/css").Text(utils.StrToBytes(style)).In(head)
+			html.NewElement("style").Attr("type", "text/css").Text(utils.StrToBytes(style)).In(head)
 		} else {
 			//创建css文件
 			var cssPath = filepath.Join(cssDir, "github.css")
@@ -169,17 +170,17 @@ func renderFile(mdPath, outPath string) {
 				fmt.Println(err)
 				os.Exit(1)
 			}
-			utils.NewElement("link").Attr("rel", "stylesheet").Attr("href", relCSSPath).In(head)
+			html.NewElement("link").Attr("rel", "stylesheet").Attr("href", relCSSPath).In(head)
 		}
 	}
-	var body *utils.Element
+	var body *html.Element
 	if styled {
-		body = utils.NewElement("body").Attr("class", "markdown-body").Append(head)
+		body = html.NewElement("body").Attr("class", "markdown-body").Append(head)
 	} else {
-		body = utils.NewElement("body").Append(head)
+		body = html.NewElement("body").Append(head)
 	}
 	body.Text(content)
-	ioutil.WriteFile(outPath, utils.WriteElement(html), os.ModePerm)
+	ioutil.WriteFile(outPath, html.WriteElement(document), os.ModePerm)
 }
 
 func renderDir(dirIn, dirOut string) {

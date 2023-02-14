@@ -19,6 +19,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
+
 package engine
 
 import (
@@ -48,29 +49,4 @@ func NewFormatter() *LuteFormatter {
 // Format 格式化
 func (formatter *LuteFormatter) Format(bytes []byte) []byte {
 	return formatter.engine.Format("Markit", bytes)
-}
-
-// Renderer 渲染器
-type Renderer interface {
-	Render(bytes []byte) []byte
-}
-
-// LuteRenderer 使用Lute实现的渲染器
-type LuteRenderer struct {
-	engine *lute.Lute
-}
-
-// NewRender 新建渲染器
-func NewRender() *LuteRenderer {
-	return &LuteRenderer{
-		engine: lute.New(func(engine *lute.Lute) {
-			engine.RenderOptions.AutoSpace = true
-			engine.RenderOptions.FixTermTypo = true
-		}),
-	}
-}
-
-// Render 渲染html
-func (renderer *LuteRenderer) Render(bytes []byte) []byte {
-	return renderer.engine.Markdown("Markit", bytes)
 }

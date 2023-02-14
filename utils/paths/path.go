@@ -20,7 +20,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-// Package paths 提供了路径相关的辅助工具
 package paths
 
 import (
@@ -42,46 +41,4 @@ func IsDir(p string) bool {
 		return false
 	}
 	return stat.IsDir()
-}
-
-// FileExists 返回文件是否存在（若path是一个文件夹，也会返回false，应当使用DirExists方法）
-func FileExists(path string) bool {
-	stat, err := os.Stat(path)
-	if err == nil {
-		if stat.IsDir() {
-			return false
-		}
-		return true
-	}
-	if os.IsNotExist(err) {
-		return false
-	}
-	return false
-}
-
-// DirExists 返回文件夹是否存在（若path是一个文件，也会返回false，应当使用FileExists方法）
-func DirExists(path string) bool {
-	stat, err := os.Stat(path)
-	if err == nil {
-		if stat.IsDir() {
-			return true
-		}
-		return false
-	}
-	if os.IsNotExist(err) {
-		return false
-	}
-	return false
-}
-
-// Exists 返回所给路径文件/文件夹是否存在(返回true是存在)
-func Exists(path string) bool {
-	_, err := os.Stat(path) //os.Stat获取文件信息
-	if err != nil {
-		if os.IsExist(err) {
-			return true
-		}
-		return false
-	}
-	return true
 }

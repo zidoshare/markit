@@ -82,7 +82,6 @@ var (
 			if err != nil {
 				cobra.CheckErr(err)
 			}
-			loadConfig(in)
 			out, err = filepath.Abs(out)
 			if err != nil {
 				cobra.CheckErr(err)
@@ -132,7 +131,7 @@ func render(r io.Reader, w io.Writer) error {
 	if err != nil {
 		return fmt.Errorf("读取文件内容出错：%w", err)
 	}
-	content = engine.NewRender(engine.NewOptions()).Render(content)
+	content = engine.NewRender().Render(content)
 	if _, err := w.Write(content); err != nil {
 		return fmt.Errorf("写入文件时出错：%w", err)
 	}
@@ -151,7 +150,7 @@ func renderFile(mdPath, outPath string) error {
 	if err != nil {
 		return fmt.Errorf("读取文件内容出错：%w", err)
 	}
-	content = engine.NewRender(engine.NewOptions()).Render(content)
+	content = engine.NewRender().Render(content)
 	if !body {
 		if err := ioutil.WriteFile(outPath, content, os.ModePerm); err != nil {
 			return fmt.Errorf("写入文件 %s 时出错：%w", outPath, err)

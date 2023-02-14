@@ -36,11 +36,11 @@ type LuteFormatter struct {
 }
 
 // NewFormatter 新建格式化
-func NewFormatter(options Options) *LuteFormatter {
+func NewFormatter() *LuteFormatter {
 	return &LuteFormatter{
 		engine: lute.New(func(engine *lute.Lute) {
-			engine.SetAutoSpace(options.AutoSpace)
-			engine.SetFixTermTypo(options.FixTermTypo)
+			engine.RenderOptions.AutoSpace = true
+			engine.RenderOptions.FixTermTypo = true
 		}),
 	}
 }
@@ -61,9 +61,11 @@ type LuteRenderer struct {
 }
 
 // NewRender 新建渲染器
-func NewRender(options Options) *LuteRenderer {
+func NewRender() *LuteRenderer {
 	return &LuteRenderer{
 		engine: lute.New(func(engine *lute.Lute) {
+			engine.RenderOptions.AutoSpace = true
+			engine.RenderOptions.FixTermTypo = true
 		}),
 	}
 }

@@ -79,7 +79,7 @@ func format(r io.Reader, w io.Writer) error {
 	if err != nil {
 		return fmt.Errorf("读取内容出错:%s", err)
 	}
-	content = engine.NewFormatter(engine.NewOptions()).Format(content)
+	content = engine.NewFormatter().Format(content)
 	if _, err := w.Write(content); err != nil {
 		return fmt.Errorf("写入内容时出错：%w", err)
 	}
@@ -90,7 +90,7 @@ func formatFile(path string) error {
 	if err != nil {
 		return fmt.Errorf("读取文件 %s 内容时出错:%s\n", path, err)
 	}
-	content = engine.NewFormatter(engine.NewOptions()).Format(content)
+	content = engine.NewFormatter().Format(content)
 	if err := os.WriteFile(path, content, os.ModePerm); err != nil {
 		return fmt.Errorf("写入文件 %s 时出错：%w", path, err)
 	}

@@ -23,17 +23,11 @@ THE SOFTWARE.
 package cmd
 
 import (
-	"errors"
-	"fmt"
 	"os"
-	"path"
 	"path/filepath"
 	"strings"
 
-	homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
-	"github.com/zidoshare/markit/utils/paths"
 )
 
 var (
@@ -67,79 +61,8 @@ func Execute() error {
 }
 
 func init() {
-	cobra.OnInitialize(initConfig)
-	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "", "默认配置文件(将从指定路径及上层路径递归查找.markit.toml,如果未能找到将尝试查询$HOME/.markit.toml)")
-
 	rootCmd.AddCommand(formatCmd)
 	rootCmd.AddCommand(renderCmd)
-}
-
-func initConfig() {
-	if cfgFile != "" {
-		viper.SetConfigFile(cfgFile)
-	} else {
-		viper.SetConfigName(".markit")
-		viper.SetConfigType("toml")
-		path, err := os.Getwd()
-		if err != nil {
-			cobra.CheckErr(err)
-		}
-		path = resolveConfigPath(path)
-		if path == "" {
-			var err error
-			path, err = homedir.Dir()
-			if err != nil {
-				cobra.CheckErr(err)
-			}
-		}
-		viper.AddConfigPath(path)
-	}
-	err := viper.ReadInConfig()
-	notFound := &viper.ConfigFileNotFoundError{}
-	switch {
-	case err != nil && !errors.As(err, notFound):
-		cobra.CheckErr(err)
-	case err != nil && errors.As(err, notFound):
-		break
-	default:
-		fmt.Fprintln(os.Stderr, "Using config file:", viper.ConfigFileUsed())
-	}
-}
-
-func loadConfig(path string) {
-	viper.SetConfigName(".markit")
-	viper.SetConfigType("toml")
-	if cfgFile != "" {
-		viper.SetConfigFile(cfgFile)
-	} else {
-		if !paths.IsDir(path) {
-			path = filepath.Dir(path)
-		}
-		path = resolveConfigPath(path)
-		if path == "" {
-			var err error
-			path, err = homedir.Dir()
-			if err != nil {
-				cobra.CheckErr(err)
-			}
-		}
-		viper.AddConfigPath(path)
-	}
-
-}
-
-// resolveConfigPath 获取当前可用配置文件路径
-func resolveConfigPath(currentPath string) (p string) {
-	for {
-		p = filepath.Join(currentPath, ".markit.toml")
-		if paths.FileExists(p) {
-			return currentPath
-		}
-		if paths.DirExists(path.Join(currentPath, ".git")) || currentPath == "/" {
-			return ""
-		}
-		currentPath = filepath.Dir(currentPath)
-	}
 }
 
 // WalkMdFile 递归遍历目录中所有的markdown文件

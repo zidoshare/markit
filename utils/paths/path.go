@@ -19,29 +19,16 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
-package utils
+
+// Package paths 提供了路径相关的辅助工具
+package paths
 
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 )
 
-//ResolveConfigPath 获取当前可用配置文件路径
-func ResolveConfigPath(currentPath string) (p string) {
-	for {
-		p = filepath.Join(currentPath, ".markit.toml")
-		if FileExists(p) {
-			return currentPath
-		}
-		if currentPath == "/" {
-			return ""
-		}
-		currentPath = filepath.Dir(currentPath)
-	}
-}
-
-//IsDir 判断目录是否是一个文件夹
+// IsDir 返回路径是否是一个文件夹
 func IsDir(p string) bool {
 	stat, err := os.Stat(p)
 	if err != nil {
@@ -57,7 +44,7 @@ func IsDir(p string) bool {
 	return stat.IsDir()
 }
 
-//FileExists 判断文件是否存在（若path是一个文件夹，也会返回false，应当使用DirExists方法）
+// FileExists 返回文件是否存在（若path是一个文件夹，也会返回false，应当使用DirExists方法）
 func FileExists(path string) bool {
 	stat, err := os.Stat(path)
 	if err == nil {
@@ -72,7 +59,7 @@ func FileExists(path string) bool {
 	return false
 }
 
-//DirExists 判断文件夹是否存在（若path是一个文件，也会返回false，应当使用FileExists方法）
+// DirExists 返回文件夹是否存在（若path是一个文件，也会返回false，应当使用FileExists方法）
 func DirExists(path string) bool {
 	stat, err := os.Stat(path)
 	if err == nil {
@@ -87,7 +74,7 @@ func DirExists(path string) bool {
 	return false
 }
 
-//Exists 判断所给路径文件/文件夹是否存在(返回true是存在)
+// Exists 返回所给路径文件/文件夹是否存在(返回true是存在)
 func Exists(path string) bool {
 	_, err := os.Stat(path) //os.Stat获取文件信息
 	if err != nil {

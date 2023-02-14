@@ -19,24 +19,28 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
+
 package cmd
 
 import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"markit/engine"
-	"markit/styles"
-	"markit/utils"
-	"markit/utils/html"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/zidoshare/markit/engine"
+	"github.com/zidoshare/markit/styles"
+	"github.com/zidoshare/markit/utils/html"
+	"github.com/zidoshare/markit/utils/paths"
+	"github.com/zidoshare/markit/utils/strbytesconv"
 
 	"github.com/spf13/cobra"
 )
 
 var (
+	// 输出路径
 	out string
 	//是否生成完整html
 	body bool
@@ -48,16 +52,14 @@ var (
 	single bool
 	//是否生成关系图
 	graph bool
-
 	//css位置
 	cssDir string
-)
 
-// renderCmd format 命令
-var renderCmd = &cobra.Command{
-	Use:   "render",
-	Short: "渲染markdown文档",
-	Long: `渲染markdown文档，可指定目录或文件路径，例如：
+	// renderCmd format 命令
+	renderCmd = &cobra.Command{
+		Use:   "render [file]",
+		Short: "渲染markdown文档",
+		Long: `渲染markdown文档，可指定目录或文件路径，例如：
 
  markit render .
 
@@ -67,108 +69,117 @@ var renderCmd = &cobra.Command{
 
  cat README.me | markit render
 	`,
-	Args: cobra.MaximumNArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
-		in := ""
-		if len(args) != 0 {
-			in = args[0]
-		} else {
-			in = os.Args[0]
-		}
-		in, err := filepath.Abs(in)
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-		loadConfig(in)
-		out, err = filepath.Abs(out)
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-		if stand {
-			if utils.IsDir(in) || utils.IsDir(out) {
-				cssDir = filepath.Join(out, cssDir)
+		Args: cobra.MaximumNArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			var err error
+			in := ""
+			if len(args) != 0 {
+				in = args[0]
 			} else {
-				cssDir = filepath.Join(filepath.Dir(out), cssDir)
+				in = os.Args[0]
 			}
-			cssDir, err := filepath.Abs(filepath.Clean(cssDir))
+			in, err = filepath.Abs(in)
 			if err != nil {
-				fmt.Println(err)
-				os.Exit(1)
+				cobra.CheckErr(err)
 			}
-			//cssDir必须在out内
-			if !strings.HasPrefix(cssDir, out) {
-				fmt.Println("css目录必须在输出目录内部")
-				os.Exit(1)
+			loadConfig(in)
+			out, err = filepath.Abs(out)
+			if err != nil {
+				cobra.CheckErr(err)
 			}
-		}
-		if len(args) != 0 {
-			if utils.IsDir(in) {
-				renderDir(in, out)
+			if stand {
+				if paths.IsDir(in) || paths.IsDir(out) {
+					cssDir = filepath.Join(out, cssDir)
+				} else {
+					cssDir = filepath.Join(filepath.Dir(out), cssDir)
+				}
+				cssDir, err := filepath.Abs(filepath.Clean(cssDir))
+				if err != nil {
+					fmt.Println(err)
+					os.Exit(1)
+				}
+				//cssDir必须在out内
+				if !strings.HasPrefix(cssDir, out) {
+					cobra.CheckErr(fmt.Errorf("css目录必须在输出目录内部"))
+				}
+			}
+			if len(args) != 0 {
+				if paths.IsDir(in) {
+					err = renderDir(in, out)
+				} else {
+					err = renderFile(in, out)
+				}
 			} else {
-				renderFile(in, out)
+				err = render(os.Stdin, os.Stdout)
 			}
-		} else {
-			render(os.Stdin, os.Stdout)
-		}
-	},
+			cobra.CheckErr(err)
+		},
+	}
+)
+
+func init() {
+	renderCmd.Flags().StringVarP(&out, "out", "o", "", "当输入为文件时，目标路径必须为文件路径。当输入为文件夹时，目标路径必须为文件夹路径")
+	renderCmd.Flags().BoolVarP(&styled, "style", "s", false, "是否添加css样式")
+	renderCmd.Flags().BoolVarP(&stand, "stand", "S", false, "是否使用独立样式，css和js文件将单独进行打包")
+	renderCmd.Flags().BoolVarP(&body, "body", "b", false, "生成完整的html，为渲染结果添加<html><title><body>等标签")
+	renderCmd.Flags().BoolVarP(&single, "single", "", false, "是否生成渲染为单页，使用局部加载，页面不发生跳转")
+	renderCmd.Flags().BoolVarP(&graph, "graph", "g", false, "是否绘制关系图")
+	renderCmd.Flags().StringVarP(&cssDir, "css-dir", "", "css", "指定css路径")
 }
 
-func render(r io.Reader, w io.Writer) {
+func render(r io.Reader, w io.Writer) error {
 	content, err := ioutil.ReadAll(r)
 	if err != nil {
-		err = fmt.Errorf("读取文件内容出错:%s", err)
-		if err != nil {
-			fmt.Println(err)
-		}
-		os.Exit(1)
+		return fmt.Errorf("读取文件内容出错：%w", err)
 	}
 	content = engine.NewRender(engine.NewOptions()).Render(content)
-	w.Write(content)
+	if _, err := w.Write(content); err != nil {
+		return fmt.Errorf("写入文件时出错：%w", err)
+	}
+	return nil
 }
 
-//渲染文件
-func renderFile(mdPath, outPath string) {
+// 渲染文件
+func renderFile(mdPath, outPath string) error {
 	arr := strings.Split(mdPath, string(filepath.Separator))
 	filename := arr[len(arr)-1]
 	filename = strings.TrimSuffix(filename, filepath.Ext(filename))
-	if utils.IsDir(outPath) {
+	if paths.IsDir(outPath) {
 		outPath = filepath.Join(outPath, filename+".html")
 	}
 	content, err := ioutil.ReadFile(mdPath)
 	if err != nil {
-		fmt.Printf("读取文件内容出错:%s\n", err)
-		os.Exit(1)
+		return fmt.Errorf("读取文件内容出错：%w", err)
 	}
 	content = engine.NewRender(engine.NewOptions()).Render(content)
 	if !body {
-		ioutil.WriteFile(outPath, content, os.ModePerm)
-		return
+		if err := ioutil.WriteFile(outPath, content, os.ModePerm); err != nil {
+			return fmt.Errorf("写入文件 %s 时出错：%w", outPath, err)
+		}
+		return nil
 	}
 	document := html.NewElement("html")
 	head := html.NewElement("head").In(document)
-	html.NewElement("title").Text(utils.StrToBytes(filename)).In(head)
+	html.NewElement("title").Text(strbytesconv.ToBytes(filename)).In(head)
 	if styled {
 		style, styleHead := styles.Get("github")
-		head.Text(utils.StrToBytes(styleHead))
+		head.Text(strbytesconv.ToBytes(styleHead))
 		//非独立样式会将样式放在head中
 		if !stand {
-			html.NewElement("style").Attr("type", "text/css").Text(utils.StrToBytes(style)).In(head)
+			html.NewElement("style").Attr("type", "text/css").Text(strbytesconv.ToBytes(style)).In(head)
 		} else {
 			//创建css文件
 			var cssPath = filepath.Join(cssDir, "github.css")
-			if !utils.FileExists(cssPath) {
-				if !utils.DirExists(filepath.Dir(cssPath)) {
+			if !paths.FileExists(cssPath) {
+				if !paths.DirExists(filepath.Dir(cssPath)) {
 					os.MkdirAll(filepath.Dir(cssPath), os.ModePerm)
 				}
-				ioutil.WriteFile(cssPath, utils.StrToBytes(style), os.ModePerm)
+				ioutil.WriteFile(cssPath, strbytesconv.ToBytes(style), os.ModePerm)
 			}
 			//计算相对路径
 			relCSSPath, err := filepath.Rel(filepath.Dir(outPath), cssPath)
 			if err != nil {
-				fmt.Println(err)
-				os.Exit(1)
+				return fmt.Errorf("无法计算 css 样式文件放置的相对路径: %w", err)
 			}
 			html.NewElement("link").Attr("rel", "stylesheet").Attr("href", relCSSPath).In(head)
 		}
@@ -180,35 +191,27 @@ func renderFile(mdPath, outPath string) {
 		body = html.NewElement("body").Append(head)
 	}
 	body.Text(content)
-	ioutil.WriteFile(outPath, html.WriteElement(document), os.ModePerm)
+	if err := ioutil.WriteFile(outPath, html.WriteElement(document), os.ModePerm); err != nil {
+		return fmt.Errorf("写入文件 %s 时出错：%w", outPath, err)
+	}
+	return nil
 }
 
-func renderDir(dirIn, dirOut string) {
-	WalkMdFile(dirIn, func(mdPath string) {
+func renderDir(dirIn, dirOut string) error {
+	return WalkMdFile(dirIn, func(mdPath string) error {
 		relativePath, err := filepath.Rel(dirIn, filepath.Dir(mdPath))
 		if err != nil {
-			fmt.Printf("渲染文件出错：%s", err)
-			os.Exit(1)
+			return fmt.Errorf("遍历文件时出错，文件路径：%s，错误原因：%w", mdPath, err)
 		}
 		resultPath := filepath.Join(dirOut, relativePath)
-		if !utils.DirExists(resultPath) {
-			os.MkdirAll(resultPath, os.ModePerm)
+		if !paths.DirExists(resultPath) {
+			return os.MkdirAll(resultPath, os.ModePerm)
 		}
 		arr := strings.Split(mdPath, string(filepath.Separator))
 		filename := arr[len(arr)-1]
 		filename = strings.TrimSuffix(filename, filepath.Ext(filename))
 		resultPath = filepath.Join(resultPath, filename) + ".html"
 		renderFile(mdPath, resultPath)
+		return nil
 	})
-}
-
-func init() {
-	processCmd(renderCmd)
-	renderCmd.Flags().StringVarP(&out, "out", "o", "", "当输入为文件时，目标路径必须为文件路径。当输入为文件夹时，目标路径必须为文件夹路径")
-	renderCmd.Flags().BoolVarP(&styled, "style", "s", false, "是否添加css样式")
-	renderCmd.Flags().BoolVarP(&stand, "stand", "S", false, "是否使用独立样式，css和js文件将单独进行打包")
-	renderCmd.Flags().BoolVarP(&body, "body", "b", false, "生成完整的html，为渲染结果添加<html><title><body>等标签")
-	renderCmd.Flags().BoolVarP(&single, "single", "", false, "是否生成渲染为单页，使用局部加载，页面不发生跳转")
-	renderCmd.Flags().BoolVarP(&graph, "graph", "g", false, "是否绘制关系图")
-	renderCmd.Flags().StringVarP(&cssDir, "css-dir", "", "css", "指定css路径")
 }

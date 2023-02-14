@@ -19,11 +19,13 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
+
+// Package html 是 html 文本渲染工具
 package html
 
 import "bytes"
 
-//Element Html节点
+// Element Html节点
 type Element struct {
 	name       string
 	attributes map[string]string
@@ -32,7 +34,7 @@ type Element struct {
 	parent     *Element
 }
 
-//NewElement 新建节点
+// NewElement 新建节点
 func NewElement(name string) *Element {
 	return &Element{
 		name:       name,
@@ -40,7 +42,7 @@ func NewElement(name string) *Element {
 	}
 }
 
-//NewTextElement 文本节点
+// NewTextElement 文本节点
 func NewTextElement(text []byte) *Element {
 	return &Element{
 		name: "",
@@ -48,25 +50,25 @@ func NewTextElement(text []byte) *Element {
 	}
 }
 
-//Name 设置节点名
+// Name 设置节点名
 func (e *Element) Name(name string) *Element {
 	e.name = name
 	return e
 }
 
-//Attr 设置节点属性
+// Attr 设置节点属性
 func (e *Element) Attr(key, value string) *Element {
 	e.attributes[key] = value
 	return e
 }
 
-//Text 添加文本
+// Text 添加文本
 func (e *Element) Text(text []byte) *Element {
 	e.children = append(e.children, NewTextElement(text))
 	return e
 }
 
-//WriteElement 获取字节数组
+// WriteElement 获取字节数组
 func WriteElement(e *Element) []byte {
 	if e.name == "" {
 		var buffer bytes.Buffer
@@ -100,14 +102,14 @@ func WriteElement(e *Element) []byte {
 	return buffer.Bytes()
 }
 
-//In 将节点放置于目标子节点中
+// In 将节点放置于目标子节点中
 func (e *Element) In(parent *Element) *Element {
 	parent.children = append(parent.children, e)
 	e.parent = parent
 	return e
 }
 
-//Append 将节点放置于目标相邻节点中
+// Append 将节点放置于目标相邻节点中
 func (e *Element) Append(last *Element) *Element {
 	return e.In(last.parent)
 }

@@ -19,23 +19,25 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
+
 package cmd
 
 import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"markit/engine"
-	"markit/utils"
 	"os"
 	"path/filepath"
+
+	"github.com/zidoshare/markit/engine"
+	"github.com/zidoshare/markit/utils/paths"
 
 	"github.com/spf13/cobra"
 )
 
 // formatCmd format 命令
 var formatCmd = &cobra.Command{
-	Use:   "format",
+	Use:   "format [path]",
 	Short: "格式化markdown文档",
 	Long: `格式化markdown文档，可指定目录或文件路径，例如：
 
@@ -49,58 +51,51 @@ var formatCmd = &cobra.Command{
 	`,
 	Args: cobra.MaximumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		if len(args) != 0 {
-			p, err := filepath.Abs(args[0])
-			if err != nil {
-				fmt.Println(err)
-				os.Exit(1)
-			}
-			loadConfig(p)
-			if utils.IsDir(p) {
-				formatDir(p)
-			} else {
-				formatFile(p)
+		if len(args) > 0 {
+			for _, arg := range args {
+				p, err := filepath.Abs(arg)
+				if err != nil {
+					fmt.Println(err)
+					os.Exit(1)
+				}
+				if paths.IsDir(p) {
+					if err := formatDir(p); err != nil {
+						cobra.CheckErr(err)
+					}
+				} else {
+					if err := formatFile(p); err != nil {
+						cobra.CheckErr(err)
+					}
+				}
 			}
 		} else {
-			p, err := filepath.Abs(os.Args[0])
-			if err != nil {
-				fmt.Println(err)
-				os.Exit(1)
-			}
-			loadConfig(p)
 			format(os.Stdin, os.Stdout)
 		}
 	},
 }
 
-func format(r io.Reader, w io.Writer) {
+func format(r io.Reader, w io.Writer) error {
 	content, err := ioutil.ReadAll(r)
 	if err != nil {
-		err = fmt.Errorf("读取文件内容出错:%s", err)
-		if err != nil {
-			fmt.Println(err)
-		}
-		os.Exit(1)
+		return fmt.Errorf("读取内容出错:%s", err)
 	}
 	content = engine.NewFormatter(engine.NewOptions()).Format(content)
-	w.Write(content)
+	if _, err := w.Write(content); err != nil {
+		return fmt.Errorf("写入内容时出错：%w", err)
+	}
+	return nil
 }
-func formatFile(path string) {
-	content, err := ioutil.ReadFile(path)
+func formatFile(path string) error {
+	content, err := os.ReadFile(path)
 	if err != nil {
-		err = fmt.Errorf("读取文件内容出错:%s\n", err)
-		if err != nil {
-			fmt.Println(err)
-		}
-		os.Exit(1)
+		return fmt.Errorf("读取文件 %s 内容时出错:%s\n", path, err)
 	}
 	content = engine.NewFormatter(engine.NewOptions()).Format(content)
-	ioutil.WriteFile(path, content, os.ModePerm)
+	if err := os.WriteFile(path, content, os.ModePerm); err != nil {
+		return fmt.Errorf("写入文件 %s 时出错：%w", path, err)
+	}
+	return nil
 }
-func formatDir(dir string) {
-	WalkMdFile(dir, formatFile)
-}
-
-func init() {
-	processCmd(formatCmd)
+func formatDir(dir string) error {
+	return WalkMdFile(dir, formatFile)
 }

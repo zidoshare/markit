@@ -19,6 +19,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
+
 package engine
 
 import "github.com/spf13/viper"
@@ -30,13 +31,13 @@ const (
 	FixTermType = "fixTermType"
 )
 
-//Options 配置
+// Options 配置
 type Options struct {
 	AutoSpace   bool
 	FixTermTypo bool
 }
 
-//NewOptions 新建配置
+// NewOptions 新建配置
 func NewOptions() Options {
 	return Options{
 		AutoSpace:   viper.GetBool(AutoSpaceName),

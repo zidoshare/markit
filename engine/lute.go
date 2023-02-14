@@ -25,17 +25,17 @@ import (
 	"github.com/88250/lute"
 )
 
-//Formatter 格式化接口
+// Formatter 格式化接口
 type Formatter interface {
 	Format(bytes []byte) []byte
 }
 
-//LuteFormatter 使用Lute实现的格式化
+// LuteFormatter 使用Lute实现的格式化
 type LuteFormatter struct {
 	engine *lute.Lute
 }
 
-//NewFormatter 新建格式化
+// NewFormatter 新建格式化
 func NewFormatter(options Options) *LuteFormatter {
 	return &LuteFormatter{
 		engine: lute.New(func(engine *lute.Lute) {
@@ -45,22 +45,22 @@ func NewFormatter(options Options) *LuteFormatter {
 	}
 }
 
-//Format 格式化
+// Format 格式化
 func (formatter *LuteFormatter) Format(bytes []byte) []byte {
 	return formatter.engine.Format("Markit", bytes)
 }
 
-//Renderer 渲染器
+// Renderer 渲染器
 type Renderer interface {
 	Render(bytes []byte) []byte
 }
 
-//LuteRenderer 使用Lute实现的渲染器
+// LuteRenderer 使用Lute实现的渲染器
 type LuteRenderer struct {
 	engine *lute.Lute
 }
 
-//NewRender 新建渲染器
+// NewRender 新建渲染器
 func NewRender(options Options) *LuteRenderer {
 	return &LuteRenderer{
 		engine: lute.New(func(engine *lute.Lute) {
@@ -68,7 +68,7 @@ func NewRender(options Options) *LuteRenderer {
 	}
 }
 
-//Render 渲染html
+// Render 渲染html
 func (renderer *LuteRenderer) Render(bytes []byte) []byte {
 	return renderer.engine.Markdown("Markit", bytes)
 }

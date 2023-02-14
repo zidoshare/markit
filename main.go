@@ -21,8 +21,14 @@ THE SOFTWARE.
 */
 package main
 
-import "markit/cmd"
+import (
+	"os"
+
+	"github.com/zidoshare/markit/cmd"
+)
 
 func main() {
-	cmd.Execute()
+	if err := cmd.Execute(); err != nil {
+		os.Exit(1)
+	}
 }
